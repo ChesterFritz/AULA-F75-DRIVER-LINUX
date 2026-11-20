@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AULA F75</title>
+  <link rel="icon" href="./icon.svg">
+  <script>
+    // apply the saved theme before first paint so there's no flash
+    try {
+      const c = localStorage.getItem("aula-f75-theme") || "system";
+      document.documentElement.dataset.theme =
+        c === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : c;
+    } catch {}
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

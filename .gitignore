@@ -1,0 +1,15 @@
+# build and tooling
+node_modules/
+__pycache__/
+*.pyc
+
+# personal keyboard backups (made by the app or `aula-f75 backup`)
+backups/
+*.af75
+before-remap.json
+
+# editor / OS clutter
+.vscode/
+.idea/
+.DS_Store
+*.swp
