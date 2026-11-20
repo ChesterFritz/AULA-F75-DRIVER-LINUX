@@ -6,6 +6,14 @@ It comes as a desktop app with a live preview of your lighting, and as a command
 
 ![Lighting settings with a live preview of the keyboard](docs/lighting.png)
 
+## What's new
+
+- **New look:** a bright, colourful interface built with Tailwind CSS, with **light and dark themes** and smooth transitions between sections.
+- **Easier macros:** a step-by-step builder with examples and live recording, and a shortcut to put a macro on a key. Macros are now saved in the format the keyboard plays back.
+- **Power section:** battery level and charging status, a battery health estimate, and the keyboard's sleep timer.
+- **New commands:** `aula-f75 battery`, `aula-f75 sleep` and `aula-f75 battery-log`.
+- **Safer device access:** the app, the command line and the battery logger take turns talking to the keyboard instead of interrupting each other.
+
 ## Features
 
 - **Lighting:** all 18 built-in effects, plus brightness, speed, colour and lights off. You can edit the colour palette of each effect.
@@ -108,7 +116,7 @@ Unplug and replug the receiver or cable once, so the new udev rule applies. Then
 aula-f75 info
 ```
 
-You should see the connection type and the current lighting. Now open **AULA F75** from your application menu, or run `aula-f75-app`.
+You should see the connection type, the current lighting, the battery level and the sleep timer. Now open **AULA F75** from your application menu, or run `aula-f75-app`.
 
 If `aula-f75` isn't found, `~/.local/bin` isn't on your `PATH`. Add this line to `~/.bashrc` or `~/.zshrc`:
 
@@ -160,7 +168,7 @@ The app runs a small local server on `127.0.0.1` and shows it in a browser app w
 ## Command line
 
 ```sh
-aula-f75 info                          # connection and current lighting
+aula-f75 info                          # connection, lighting, battery and sleep timer
 aula-f75 modes                         # list effects and colours
 aula-f75 set fixed -b 9 -c cyan        # static cyan at full brightness
 aula-f75 set respire -s 3 -c rainbow   # breathing, speed 3, rainbow
@@ -207,6 +215,7 @@ aula-f75 battery                   # charge level and the battery health estimat
 aula-f75 sleep                     # how long the keyboard waits before sleeping
 aula-f75 sleep 5                   # sleep after 5 minutes (1, 1.5, 2, 3, 4, 5, 10, 15 or 20)
 aula-f75 sleep never               # never sleep (drains the battery much faster)
+aula-f75 battery-log               # run the battery logger by hand (normally a user service)
 ```
 
 ### Backups
@@ -271,7 +280,7 @@ docs/                 screenshots
 
 ### Development
 
-- Debug options for the app URL: `&tab=keys&key=capslock` opens the Keys section with Caps Lock selected, `&debug=1` outlines the clickable keys, and `&preview=rainbow-wheel` previews an effect without writing it to the keyboard.
+- Debug options for the app URL: `&tab=keys&key=capslock` opens the Keys section (other tabs: `lighting`, `macros`, `power`, `backups`) with Caps Lock selected, `&debug=1` outlines the clickable keys, and `&preview=rainbow-wheel` previews an effect without writing it to the keyboard.
 - The keyboard drawing is generated from `app/web/src/lib/layout.js`, and the lighting preview comes from `app/web/src/lib/effects.js`.
 - Not implemented yet: per-key custom lighting, and the screen/GIF features of other AULA models.
 
