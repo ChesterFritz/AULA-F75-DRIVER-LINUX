@@ -2,6 +2,7 @@
   import { app } from "../lib/store.svelte.js";
   import { keyLabel, describe, codeToName } from "../lib/labels.js";
   import { createSim, hexToRgb } from "../lib/effects.js";
+  import { shortcutsFor, keyName } from "../lib/manual.js";
 
   let board = $state();
   let under = $state();   // light spilling between the caps
@@ -12,6 +13,9 @@
 
   const L = $derived(app.layout);
   const editing = $derived(app.tab === "keys" && !!app.state);
+  const guiding = $derived(app.tab === "manual");
+  const lit = $derived(new Set(guiding ? app.guide.keys : []));
+  const pickGuide = (k) => (app.guide.key = app.guide.key === k ? null : k);
   const keys = $derived(app.state ? app.state.layers[app.layer] : {});
 
   function lightSettings() {
@@ -92,7 +96,7 @@
   const pct = (v, total) => (v / total) * 100 + "%";
 </script>
 
-<div class="wrap" class:editing>
+<div class="wrap" class:editing class:guiding>
   <canvas class="glow" bind:this={glow} width="96" height="40" aria-hidden="true"></canvas>
   {#if L}
   <!-- svelte-ignore a11y_no_static_element_interactions (pointer only feeds the preview) -->
@@ -154,18 +158,41 @@
           class="hot"
           class:changed={info?.changed}
           class:selected={editing && app.selectedKey === k.key}
+          class:lit={lit.has(k.key)}
+          class:picked={guiding && app.guide.key === k.key}
           style:left={pct(k.x, L.width)} style:top={pct(k.y, L.height)}
           style:width={pct(k.w, L.width)} style:height={pct(k.h, L.height)}
-          tabindex={editing ? 0 : -1}
-          aria-label={`${keyLabel(k.key)}: ${describe(info?.action, app.state?.macros)}`}
-          onclick={() => (app.selectedKey = k.key)}
+          tabindex={editing || guiding ? 0 : -1}
+          aria-label={guiding ? `Shortcuts with ${keyLabel(k.key)}` : `${keyLabel(k.key)}: ${describe(info?.action, app.state?.macros)}`}
+          onclick={() => (guiding ? pickGuide(k.key) : (app.selectedKey = k.key))}
           onpointerenter={() => (hover = k)}
           onpointerleave={() => (hover = null)}
           onfocus={() => (hover = k)}
           onblur={() => (hover = null)}
         ></button>
       {/each}
+      {#if L.knob && guiding}
+        <button class="hot knob" class:lit={lit.has("wheel")} class:picked={app.guide.key === "wheel"} aria-label="Knob shortcuts"
+                style:left={pct(L.knob.x, L.width)} style:top={pct(L.knob.y, L.height)}
+                style:width={pct(L.knob.w, L.width)} style:height={pct(L.knob.h, L.height)}
+                onclick={() => pickGuide("wheel")}
+                onpointerenter={() => (hover = L.knob)} onpointerleave={() => (hover = null)}
+                onfocus={() => (hover = L.knob)} onblur={() => (hover = null)}></button>
+      {/if}
     </div>
+    {#if guiding && hover}
+      {@const list = hover.key === "wheel" ? [] : shortcutsFor(hover.key, app.guide.os)}
+      {@const below = hover.y < L.height * 0.4}
+      <div class="tip" class:below style:left={pct(Math.min(Math.max(hover.x + hover.w / 2, L.width * 0.2), L.width * 0.8), L.width)}
+           style:top={pct(below ? hover.y + hover.h : hover.y, L.height)}>
+        <strong>{hover.key === "wheel" ? "Knob" : keyName(hover.key)}</strong>
+        {#if hover.key === "wheel"}<span>Press, turn, or hold 3–5 s to switch mode</span>
+        {:else if hover.key === "fn"}<span>Hold to see the current mode · part of every shortcut</span>
+        {:else if list.length}
+          {#each list.slice(0, 4) as s (s.keys.join() + s.what)}<span>{s.keys.length > 1 ? s.keys.map(keyName).join(" + ") : "On its own"}: {s.what}</span>{/each}
+        {:else}<span>No Fn shortcut</span>{/if}
+      </div>
+    {/if}
     {#if editing && hover}
       {@const info = keys[hover.key]}
       <div class="tip" style:left={pct(hover.x + hover.w / 2, L.width)} style:top={pct(hover.y, L.height)}>
@@ -217,11 +244,29 @@
   }
   .debug .hot { box-shadow: inset 0 0 0 1px #ff3df0; }
 
+  /* Manual tab: click a key to filter the manual, shortcut keys light up */
+  .guiding .under, .guiding .tint { opacity: .35; }
+  .guiding .hot { pointer-events: auto; cursor: pointer; }
+  .guiding .hot:hover, .guiding .hot:focus-visible {
+    outline: none; transform: translateY(-2px);
+    background: color-mix(in oklab, var(--tab) 35%, transparent); box-shadow: inset 0 0 0 3px #17121f;
+  }
+  .hot.knob { border-radius: 50%; }
+  .hot.picked { background: color-mix(in oklab, var(--tab) 22%, transparent); box-shadow: inset 0 0 0 3px var(--tab), 0 0 0 2px #17121f; }
+  .hot.lit {
+    transform: translateY(-3px);
+    background: color-mix(in oklab, var(--color-sun) 28%, transparent);
+    box-shadow: inset 0 0 0 3px #17121f, 0 0 0 3px var(--color-sun), 0 0 0 5px #17121f, 0 0 24px var(--color-sun);
+    animation: lit-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes lit-pulse { 50% { box-shadow: inset 0 0 0 3px #17121f, 0 0 0 3px var(--color-sun), 0 0 0 5px #17121f, 0 0 40px 6px var(--color-sun); } }
+
   .tip {
     position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; z-index: 2;
     background: var(--color-sun); color: #17121f; border: 3px solid #17121f; border-radius: 12px; padding: .4rem .7rem;
     display: grid; font-size: .8rem; line-height: 1.35; white-space: nowrap; box-shadow: 3px 3px 0 #17121f;
   }
+  .tip.below { transform: translate(-50%, 12px); }
   .tip strong { font-weight: 800; }
   .tip span { color: rgb(23 18 31 / .7); font-weight: 600; }
 </style>

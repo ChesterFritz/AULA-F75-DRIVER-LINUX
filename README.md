@@ -11,6 +11,7 @@ It comes as a desktop app with a live preview of your lighting, and as a command
 - **New look:** a bright, colourful interface built with Tailwind CSS, with **light and dark themes** and smooth transitions between sections.
 - **Easier macros:** a step-by-step builder with examples and live recording, and a shortcut to put a macro on a key. Macros are now saved in the format the keyboard plays back.
 - **Power section:** battery level and charging status, a battery health estimate, and the keyboard's sleep timer.
+- **Built-in manual:** every Fn shortcut, the function row for each system mode, the knob, pairing and reset how-tos, and specs from the quick start guide. Point at a shortcut to light up its keys on the keyboard, or click a key to see what it does.
 - **New commands:** `aula-f75 battery`, `aula-f75 sleep` and `aula-f75 battery-log`.
 - **Safer device access:** the app, the command line and the battery logger take turns talking to the keyboard instead of interrupting each other.
 
@@ -160,6 +161,7 @@ Rebuild after you change anything in `app/web/src`, then restart the app.
 | **Macros** | Add steps (*Type text*, *Press keys*, *Wait*, *Hold down*, *Release*), start from an example, or press **Record** and type. Power users can switch to text and write `"hello" enter` or `ctrl+c 50ms ctrl+v`. After saving, **Put it on a key** takes you to **Keys** with the macro ready to assign. |
 | **Power** | See the battery level and the health estimate, and pick how long the keyboard waits before sleeping. |
 | **Backups** | Save everything on the keyboard to `backups/`, or restore an earlier backup. |
+| **Manual** | The keyboard's quick start guide: Fn shortcuts, the function row (Windows / Mac / Android mode), the knob, how to pair Bluetooth and 2.4G, check the battery, factory reset and swap switches, plus specs. Search it, point at a shortcut to light up its keys, or click a key on the keyboard to see its shortcuts. Works without the keyboard connected. |
 
 The theme switch (light, dark or system) is at the bottom of the side bar.
 
@@ -280,7 +282,7 @@ docs/screenshots/     screenshots
 
 ### Development
 
-- Debug options for the app URL: `&tab=keys&key=capslock` opens the Keys section (other tabs: `lighting`, `macros`, `power`, `backups`) with Caps Lock selected, `&debug=1` outlines the clickable keys, and `&preview=rainbow-wheel` previews an effect without writing it to the keyboard.
+- Debug options for the app URL: `&tab=keys&key=capslock` opens the Keys section (other tabs: `lighting`, `macros`, `power`, `backups`, `manual`) with Caps Lock selected, `&debug=1` outlines the clickable keys, and `&preview=rainbow-wheel` previews an effect without writing it to the keyboard.
 - The keyboard drawing is generated from `app/web/src/lib/layout.js`, and the lighting preview comes from `app/web/src/lib/effects.js`.
 - Not implemented yet: per-key custom lighting, and the screen/GIF features of other AULA models.
 

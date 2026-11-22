@@ -1,6 +1,6 @@
 <script>
   import { onMount } from "svelte";
-  import { Sun, Keyboard as KeyboardIcon, Workflow, Archive, Wifi, Usb, Loader, Check, CircleOff, Sparkles, Moon, Monitor, BatteryCharging } from "@lucide/svelte";
+  import { Sun, Keyboard as KeyboardIcon, Workflow, Archive, Wifi, Usb, Loader, Check, CircleOff, Sparkles, Moon, Monitor, BatteryCharging, BookOpen } from "@lucide/svelte";
   import { app, init, load } from "./lib/store.svelte.js";
   import { theme, setTheme } from "./lib/theme.svelte.js";
   import Keyboard from "./components/Keyboard.svelte";
@@ -9,6 +9,7 @@
   import MacrosPanel from "./components/MacrosPanel.svelte";
   import BackupsPanel from "./components/BackupsPanel.svelte";
   import PowerPanel from "./components/PowerPanel.svelte";
+  import ManualPanel from "./components/ManualPanel.svelte";
   import Toasts from "./components/Toasts.svelte";
   import BatteryBadge from "./components/BatteryBadge.svelte";
 
@@ -18,6 +19,7 @@
     { id: "macros", label: "Macros", icon: Workflow, color: "#8b5cff", soft: "#e6dcff", intro: "Sequences of key presses stored on the keyboard." },
     { id: "power", label: "Power", icon: BatteryCharging, color: "#0fa968", soft: "#d3f5e4", intro: "Battery level and how soon the keyboard goes to sleep." },
     { id: "backups", label: "Backups", icon: Archive, color: "#ff7a1a", soft: "#ffe2cc", intro: "Save the whole setup, or go back to an earlier one." },
+    { id: "manual", label: "Manual", icon: BookOpen, color: "#0c9bb8", soft: "#d0f3fa", intro: "Every shortcut and how-to from the quick start guide. Point at one to see its keys." },
   ];
   const current = $derived(TABS.find((t) => t.id === app.tab));
   const THEMES = [
@@ -131,7 +133,7 @@
 
     <section class="stage relative mx-auto mb-6 max-w-[1100px] rounded-[2rem] border-[3px] border-ink p-[5px] shadow-pop-lg
                     xl:mx-0 xl:mb-5 xl:w-full xl:max-w-none"
-             class:compact={app.tab === "macros" || app.tab === "backups" || app.tab === "power"}
+             class:compact={app.tab === "macros" || app.tab === "backups" || app.tab === "power" || app.tab === "manual"}
              aria-label="Keyboard">
       <div class="relative overflow-hidden stage-mat rounded-[1.6rem] border-[3px] border-ink px-[clamp(1rem,4vw,3rem)] py-[clamp(1rem,3vw,2rem)] xl:px-8 xl:py-5">
         <div class="stage-glow pointer-events-none absolute inset-0 transition-[background] duration-500"
@@ -140,7 +142,7 @@
           <Sparkles size={12} strokeWidth={3} /> LIVE PREVIEW
         </span>
         <Keyboard />
-        {#if !app.state}
+        {#if !app.state && !(app.tab === "manual" && app.layout)}
           <div class="absolute inset-0 z-20 grid place-content-center justify-items-center gap-3 bg-[#1a1524]/80 p-4 text-center text-white backdrop-blur-sm">
             {#if app.loading}
               <Loader size={34} class="spin text-sun" />
@@ -156,7 +158,8 @@
     </section>
 
     <div class="mx-auto max-w-[1100px] xl:contents" role="tabpanel" aria-labelledby={"rail-" + app.tab}>
-      {#if app.state && app.catalog}
+      {#if app.tab === "manual"}<ManualPanel />
+      {:else if app.state && app.catalog}
         {#if app.tab === "lighting"}<LightingPanel />
         {:else if app.tab === "keys"}<KeysPanel />
         {:else if app.tab === "macros"}<MacrosPanel />
