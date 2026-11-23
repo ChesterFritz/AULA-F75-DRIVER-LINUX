@@ -12,6 +12,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 import aula_f75 as A  # noqa: E402
 import battery_health as H  # noqa: E402
+import keychron_mouse as KM  # noqa: E402
 
 # Notices typing (timestamps only) so battery reads happen only while the keyboard is in use:
 # every read resets the keyboard's sleep timer, so polling an idle keyboard would keep it awake.
@@ -287,13 +288,34 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the page closed or reloaded before the answer arrived; nothing to do
 
     def _authed(self):
         return secrets.compare_digest(self.headers.get("X-Token", ""), TOKEN)
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path.startswith("/api/mouse-image/"):
+            q = dict(x.split("=", 1) for x in self.path.partition("?")[2].split("&") if "=" in x)
+            if not secrets.compare_digest(q.get("t", ""), TOKEN):
+                return self._json(403, {"error": "forbidden"})
+            try:
+                pid, n = path.split("/")[-2:]
+                art = KM.artwork(int(pid, 16))
+                data = open(art["images"][int(n)], "rb").read()
+            except (ValueError, IndexError, TypeError, OSError):
+                self.send_error(404)
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Cache-Control", "max-age=86400")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if path.startswith("/api/"):
             if not self._authed():
                 return self._json(403, {"error": "forbidden"})
@@ -311,6 +333,17 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(200, {"battery": battery_live()})
                 if path == "/api/battery-health":
                     return self._json(200, battery_health())
+                if path == "/api/mouse-info":
+                    try:
+                        return self._json(200, with_mouse(mouse_info))
+                    except KM.MouseError:
+                        return self._json(200, {"info": None})
+                if path == "/api/mouse":
+                    try:
+                        st = with_mouse(mouse_state)
+                        return self._json(200, dict(st, catalog=mouse_catalog(), art=mouse_art(st["pid"])))
+                    except KM.MouseError as e:
+                        return self._json(200, {"connected": False, "error": str(e), "catalog": mouse_catalog()})
             except NoDevice as e:
                 return self._json(200, {"connected": False, "error": str(e)})
             except A.DeviceError as e:
@@ -334,6 +367,22 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(403, {"error": "forbidden"})
         LAST_PING[0] = time.time()
         name = self.path[len("/api/"):]
+        if name == "mouse-settings":
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                return self._json(200, dict(with_mouse(lambda m: act_mouse_settings(m, body)), ok=True))
+            except KM.MouseError as e:
+                return self._json(200, {"ok": False, "error": str(e)})
+            except (KeyError, ValueError, TypeError) as e:
+                return self._json(400, {"ok": False, "error": f"Bad request: {e}"})
+        if name == "mouse-remap":
+            try:
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+                return self._json(200, dict(with_mouse(lambda m: act_mouse_remap(m, body)), ok=True))
+            except KM.MouseError as e:
+                return self._json(200, {"ok": False, "error": str(e)})
+            except (KeyError, ValueError) as e:
+                return self._json(400, {"ok": False, "error": f"Bad request: {e}"})
         fn = ACTIONS.get(name)
         if not fn:
             return self._json(404, {"error": "not found"})
@@ -347,6 +396,75 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"ok": False, "error": wake_hint(e)})
         except (KeyError, ValueError) as e:
             return self._json(400, {"ok": False, "error": f"Bad request: {e}"})
+
+
+# ---------------------------------------------------------------- Keychron mouse
+# Separate handle and lock from the keyboard, so a missing or sleeping mouse never
+# gets in the way of the AULA keyboard.
+MOUSE_LOCK = threading.Lock()
+_mouse = [None]
+
+
+def with_mouse(fn):
+    with MOUSE_LOCK:
+        for attempt in (0, 1):
+            if _mouse[0] is None:
+                _mouse[0] = KM.Receiver.find()
+                if _mouse[0] is None:
+                    raise KM.MouseError("Keychron mouse not found. Plug in the Keychron receiver or the cable.")
+            try:
+                return fn(_mouse[0])
+            except OSError:
+                _mouse[0].close()
+                _mouse[0] = None
+                if attempt:
+                    raise KM.MouseError("Lost the Keychron receiver. Plug it back in.")
+
+
+def _mouse_info(m, pid):
+    art = KM.artwork(pid)
+    try:
+        return m.info(art["rates"] if art else None)
+    except KM.MouseError:
+        return None
+
+
+def mouse_state(m):
+    name, rows = m.buttons()
+    pid = m.model()
+    return {"connected": True, "name": name, "pid": pid, "buttons": rows, "info": _mouse_info(m, pid)}
+
+
+def mouse_info(m):
+    return {"info": _mouse_info(m, m.model())}
+
+
+def mouse_art(pid):
+    """Keychron's pictures of the mouse (downloaded once, outside the mouse lock)."""
+    art = KM.artwork(pid)
+    return {"images": len(art["images"]), "spots": art["spots"], "dpi_limit": art.get("dpi_limit")} if art else None
+
+
+def mouse_catalog():
+    return {"mouse": list(KM.MOUSE_ACTIONS), "media": list(KM.MEDIA_ACTIONS),
+            "cycle": list(KM.CYCLE_ACTIONS), "shortcut": list(KM.SHORTCUT_ACTIONS)}
+
+
+def act_mouse_remap(m, body):
+    return {"action": m.remap(body["button"], body["action"])}
+
+
+def act_mouse_settings(m, body):
+    """{"dpi": {"steps": [...], "current": n}} and/or {"polling": n}; returns the fresh info."""
+    pid = m.model()
+    art = KM.artwork(pid)
+    if "dpi" in body:
+        d = body["dpi"]
+        limit = tuple(art["dpi_limit"]) if art and art.get("dpi_limit") else (50, 26000)
+        m.set_dpi(d["steps"], int(d["current"]), limit)
+    if "polling" in body:
+        m.set_polling(int(body["polling"]))
+    return {"info": _mouse_info(m, pid)}
 
 
 def wake_hint(e):

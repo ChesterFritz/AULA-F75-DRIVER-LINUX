@@ -92,7 +92,7 @@ export async function init() {
   const q = new URLSearchParams(location.search);
   app.debug = !!q.get("debug");
   app.preview = q.get("preview");
-  if (["keys", "macros", "backups", "power", "manual"].includes(q.get("tab"))) app.tab = q.get("tab");
+  if (["keys", "macros", "mouse", "backups", "power", "manual"].includes(q.get("tab"))) app.tab = q.get("tab");
   if (q.get("key")) app.selectedKey = q.get("key");
   try {
     app.catalog = await api("catalog");

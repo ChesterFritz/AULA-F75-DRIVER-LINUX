@@ -1,13 +1,13 @@
 <script>
   import { Zap } from "@lucide/svelte";
-  let { battery } = $props();
+  let { battery, device = "Keyboard" } = $props();
 
   const pct = $derived(battery.percent);
   const level = $derived(battery.charging ? "charging" : pct <= 15 ? "low" : pct <= 40 ? "mid" : "ok");
   const FILL = { charging: "var(--color-aqua)", ok: "var(--color-lime)", mid: "var(--color-sun)", low: "var(--color-cherry)" };
   const title = $derived(
-    battery.charging ? `Keyboard battery ${pct}%, charging` :
-    pct <= 15 ? `Keyboard battery ${pct}%, low: plug in the cable` : `Keyboard battery ${pct}%`);
+    battery.charging ? `${device} battery ${pct}%, charging` :
+    pct <= 15 ? `${device} battery ${pct}%, low: plug in the cable` : `${device} battery ${pct}%`);
 </script>
 
 <span class="sticker gap-2 bg-surface text-ink" class:low={level === "low"} {title} aria-label={title}>
